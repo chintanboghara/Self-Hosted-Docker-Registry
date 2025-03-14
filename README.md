@@ -260,3 +260,31 @@ curl -k -u <username>:<password> https://<your-domain>:5000/v2/_catalog
 - **Permissions**: Sensitive files (`htpasswd`, SSL certificates) should have restricted access.
 - **Configuration**: Customize the registry further using environment variables or a config file (see [Docker Registry Docs](https://docs.docker.com/registry/configuration/)).
 - **Troubleshooting**: If SSL fails, check domain DNS settings, firewall rules (ports 80/5000), and certificate paths.
+
+## Running the Shell Script
+
+To automate the setup process, a shell script is provided.
+
+### 1. Customize Variables
+Edit the script to replace placeholders with your actual values:
+- `DOMAIN="your-domain.com"` (e.g., `docreg.in`)
+- `USERNAME="your-username"` (e.g., `chintanboghara`)
+- `PASSWORD="your-password"` (e.g., a strong password)
+
+### 2. Make the Script Executable
+```bash
+chmod +x self-hosted-docker-registry.sh
+```
+
+### 3. Run the Script
+```bash
+./self-hosted-docker-registry.sh
+```
+
+The script will:
+- Update the system.
+- Install Docker and dependencies.
+- Set up authentication with `htpasswd`.
+- Generate SSL certificates with Certbot.
+- Start the Docker registry container with authentication and SSL.
+- Test the setup by pushing and pulling a sample image.
