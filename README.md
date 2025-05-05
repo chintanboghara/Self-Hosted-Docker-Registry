@@ -268,3 +268,132 @@ chmod +x self-hosted-docker-registry.sh
 ./self-hosted-docker-registry.sh
 ```
 - The script handles system updates, installations, authentication, SSL setup, and testing.
+
+## Managing Your Registry
+
+Once your private Docker registry is set up, you may need to manage the images stored in it, such as deleting specific images to free up storage space. This section provides instructions on how to delete images and reclaim storage.
+
+### Deleting Images from Your Registry
+
+To delete a specific image from your registry and free up the storage space it occupies, follow these steps. Note that this requires your registry to be configured with persistent storage and deletions enabled. If you set up your registry using the provided script without modifications, you may need to update your setup first.
+
+#### Step 1: Update Your Registry Setup (If Necessary)
+
+If your registry does not already use persistent storage or have deletions enabled, follow these steps to update it:
+
+1. **Stop and remove the current registry container:**
+   ```bash
+   docker stop registry && docker rm registry
+   ```
+
+2. **Create a directory on the host for registry data:**
+   ```bash
+   sudo mkdir -p /var/lib/docker-registry
+   sudo chmod 755 /var/lib/docker-registry
+   ```
+
+3. **Relaunch the registry with persistent storage and deletions enabled:**
+   Use the following command, replacing `your-domain` with your actual domain:
+   ```bash
+   docker run -d -p 5000:5000 --name registry --restart always \
+     -v /var/lib/docker-registry:/var/lib/registry \
+     -v /etc/docker/registry:/auth \
+     -v /etc/letsencrypt:/certs \
+     -e "REGISTRY_AUTH=htpasswd" \
+     -e "REGISTRY_AUTH_HTPASSWD_REALM=Private Docker Registry" \
+     -e "REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd" \
+     -e "REGISTRY_HTTP_TLS_CERTIFICATE=/certs/live/your-domain/fullchain.pem" \
+     -e "REGISTRY_HTTP_TLS_KEY=/certs/live/your-domain/privkey.pem" \
+     -e "REGISTRY_STORAGE_DELETE_ENABLED=true" \
+     registry:2
+   ```
+
+   - The `-v /var/lib/docker-registry:/var/lib/registry` option mounts a host directory to persist registry data.
+   - The `-e "REGISTRY_STORAGE_DELETE_ENABLED=true"` option enables image deletions.
+
+#### Step 2: Delete a Specific Image
+
+Use the registry's API to delete the image. Replace `your-domain`, `username`, and `password` with your actual values.
+
+1. **List available repositories:**
+   ```bash
+   curl -k -u username:password https://your-domain:5000/v2/_catalog
+   ```
+   - Example output: `{"repositories":["ubuntu"]}`
+
+2. **List tags for the repository you want to delete:**
+   ```bash
+   curl -k -u username:password https://your-domain:5000/v2/ubuntu/tags/list
+   ```
+   - Example output: `{"name":"ubuntu","tags":["latest"]}`
+
+3. **Get the digest of the image tag:**
+   ```bash
+   curl -k -u username:password -I -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+     https://your-domain:5000/v2/ubuntu/manifests/latest
+   ```
+   - Look for the `Docker-Content-Digest` header in the response, e.g., `Docker-Content-Digest: sha256:abcd1234...`
+
+4. **Delete the image manifest using the digest:**
+   ```bash
+   curl -k -u username:password -X DELETE \
+     https://your-domain:5000/v2/ubuntu/manifests/sha256:abcd1234...
+   ```
+   - Replace `sha256:abcd1234...` with the actual digest.
+
+#### Step 3: Run Garbage Collection
+
+After deleting the image reference, run garbage collection to free up the storage space:
+
+1. **Stop the registry container:**
+   ```bash
+   docker stop registry
+   ```
+
+2. **Run the garbage collection command:**
+   ```bash
+   docker run --rm -v /var/lib/docker-registry:/var/lib/registry registry:2 garbage-collect /etc/docker/registry/config.yml
+   ```
+   - This command removes unreferenced data from the registry storage.
+
+3. **Restart the registry container:**
+   ```bash
+   docker start registry
+   ```
+
+#### Step 4: Verify Deletion and Space Reclamation
+
+1. **Confirm the image is no longer listed:**
+   ```bash
+   curl -k -u username:password https://your-domain:5000/v2/_catalog
+   ```
+   - The deleted repository or tag should not appear.
+
+2. **Check the storage usage on the host:**
+   ```bash
+   du -sh /var/lib/docker-registry
+   ```
+   - The size should be reduced after garbage collection.
+
+### Alternative: Delete All Images
+
+If you want to delete all images and start with an empty registry, you can remove the registry container and its data:
+
+1. **Stop and remove the registry container:**
+   ```bash
+   docker stop registry && docker rm registry
+   ```
+
+2. **If using persistent storage, delete the data directory:**
+   ```bash
+   sudo rm -rf /var/lib/docker-registry
+   ```
+
+3. **Clean up unused Docker data:**
+   ```bash
+   docker system prune -f
+   ```
+
+4. **Relaunch the registry as needed using the setup script or command.**
+
+**Warning:** This action is destructive and will remove all images from your registry.
