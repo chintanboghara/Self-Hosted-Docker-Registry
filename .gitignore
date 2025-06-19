@@ -1,0 +1,4 @@
+# Ignore sensitive or large runtime files
+auth/htpasswd
+certs/
+data/
