@@ -1,0 +1,21 @@
+version: '3.7'
+
+services:
+  registry:
+    image: registry:2
+    restart: always
+    ports:
+      - "443:5000"
+    environment:
+      # Storage and HTTP settings
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/fullchain.pem
+      REGISTRY_HTTP_TLS_KEY: /certs/privkey.pem
+      # HTTP Basic Auth
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: "Registry Realm"
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+    volumes:
+      - ./data:/var/lib/registry
+      - ./certs:/certs:ro
+      - ./auth:/auth:ro
