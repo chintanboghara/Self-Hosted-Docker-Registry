@@ -193,3 +193,16 @@ services:
    ```
 
    This renews certs daily at 03:00 and restarts the registry if they’ve changed.
+
+## Troubleshooting
+
+* **Port conflict**:
+  If port 443 is in use, edit `docker-compose.yml` to map host `8443:5000` and login via `https://$DOMAIN:8443`.
+
+* **Certificate errors**:
+
+  * For self‑signed certs, add `--insecure-registry $DOMAIN` to Docker daemon or import the cert into your OS trust store.
+  * For Let’s Encrypt, check `/var/log/letsencrypt/letsencrypt.log`.
+
+* **Permission denied**:
+  Ensure your user is in the `docker` group or run with `sudo`.
